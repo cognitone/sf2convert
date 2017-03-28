@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="eYul1W" name="sf2convert" projectType="consoleapp" version="1.0.0"
+              bundleIdentifier="com.cognitone.sf2convert" includeBinaryInAppConfig="0"
+              jucerVersion="4.3.0">
+  <MAINGROUP id="MVXugt" name="sf2convert">
+    <GROUP id="{47A31A0C-1126-DD40-5DA0-4438F81DF118}" name="Source">
+      <FILE id="oYyReq" name="sf2convert.cpp" compile="1" resource="0" file="Source/sf2convert.cpp"/>
+      <FILE id="BF5wCT" name="sfont.cpp" compile="1" resource="0" file="Source/sfont.cpp"/>
+      <FILE id="mMmltW" name="sfont.h" compile="0" resource="0" file="Source/sfont.h"/>
+    </GROUP>
+  </MAINGROUP>
+  <EXPORTFORMATS>
+    <XCODE_MAC targetFolder="Builds/MacOSX">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" isDebug="1" optimisation="1" targetName="sf2convert"/>
+        <CONFIGURATION name="Release" isDebug="0" optimisation="3" targetName="sf2convert"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_core" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_events" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_cryptography" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_audio_basics" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../audio/juce/modules"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
+    <VS2010 targetFolder="Builds/VisualStudio2010">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" winWarningLevel="4" generateManifest="1" winArchitecture="32-bit"
+                       isDebug="1" optimisation="1" targetName="sf2convert"/>
+        <CONFIGURATION name="Release" winWarningLevel="4" generateManifest="1" winArchitecture="32-bit"
+                       isDebug="0" optimisation="3" targetName="sf2convert"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_core" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_events" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_cryptography" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_audio_basics" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../audio/juce/modules"/>
+      </MODULEPATHS>
+    </VS2010>
+  </EXPORTFORMATS>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_cryptography" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0"/>
+  </MODULES>
+  <JUCEOPTIONS JUCE_USE_FLAC="enabled" JUCE_USE_OGGVORBIS="enabled"/>
+</JUCERPROJECT>
