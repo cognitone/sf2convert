@@ -32,6 +32,12 @@
 
 
 typedef unsigned char byte;
+#ifndef ushort
+typedef unsigned short ushort;
+#endif
+#ifndef uint
+typedef unsigned int uint;
+#endif
 
 /**
     @todo:

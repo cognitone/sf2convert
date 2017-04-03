@@ -415,7 +415,10 @@ void SoundFont::readVersion()
 
 char* SoundFont::readString(int n)
 {
-    char data[n+1];
+	// VC++ doesn't allow variable array size
+	jassert(n < 1024);
+    char data[1024];
+
     if (_infile->read((char*)data, n) != n)
         throw("unexpected end of file");
     if (data[n-1] != 0)

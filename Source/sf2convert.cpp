@@ -55,73 +55,72 @@ int main(int argc, char* argv[])
     bool convert = false;
     SF2::FileType format = SF2::SF2Format;
     int  quality = 2;
-    
-    int c;
     bool any = false;
-    while ((c = getopt(argc, argv, "xzofd012")) != EOF) {
-        switch(c) {
-                
-            case 'x':
+    
+    StringArray commandLine (argv + 1, argc - 1);
+    /** Lacking getopt() on Windows, this is a quick & simple hack to pasre command line options */
+    while (commandLine.size() > 2)
+    {
+        String token = commandLine.getReference(0);
+        if (token.startsWith("-"))
+        {
+            if (token.indexOfChar('x') > 0)
+            {
                 convert = true;
                 format = SF2::SF2Format;
                 any = true;
-                break;
-                
-            case 'z':
+            }
+            if (token.indexOfChar('z') > 0)
+            {
                 convert = true;
                 format = SF2::SF3Format;
                 any = true;
-                break;
-                
-            case 'o':
+            }
+            if (token.indexOfChar('o') > 0)
+            {
                 convert = true;
                 format = SF2::SF3Format;
                 any = true;
-                break;
-                
-            case 'f':
+            }
+            if (token.indexOfChar('f') > 0)
+            {
                 convert = true;
                 format = SF2::SF4Format;
                 any = true;
-                break;
-                
-            case 'd':
+            }
+            if (token.indexOfChar('d') > 0)
+            {
                 dump = true;
                 any = true;
-                break;
-                
-            case '0':
+            }
+            if (token.indexOfChar('0') > 0)
+            {
                 quality = 0;
-                break;
-            case '1':
+            }
+            if (token.indexOfChar('1') > 0)
+            {
                 quality = 1;
-                break;
-            case '2':
+            }
+            if (token.indexOfChar('2') > 0)
+            {
                 quality = 2;
-                break;
-                
-            default:
-                usage(argv[0]);
-                exit(1);
+            }
+            //DBG(token);
+            commandLine.remove(0);
         }
     }
+    
     const char* pname = argv[0];
 
-    if (argc < 3) {
+    if (commandLine.size() != 2 && !any)
+    {
         usage(pname);
         exit(1);
     }
     
-    argc -= 1;
-    argv += 1;
-    if (!any) {
-        usage(pname);
-        exit(2);
-    }
-    
-    File inFilename (argv[1]);
-    File outFilename (argv[2]);
-    
+    File inFilename (commandLine[0]);
+    File outFilename (commandLine[1]);
+
     SF2::SoundFont sf(inFilename);
     sf.log("Reading " + inFilename.getFullPathName());
     
