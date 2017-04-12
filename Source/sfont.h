@@ -4,7 +4,7 @@
 //
 //  Copyright (C) 2015 Davy Triponney (Polyphone)
 //                2010 Werner Schweer and others (MuseScore)
-//                2017 Cognitone
+//                2017 Cognitone (Juce port, converter)
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -30,8 +30,9 @@
 // Enable this, if compression format is set individually per sample (not yet possible)
 #define USE_MULTIPLE_COMPRESSION_FORMATS 0
 
-
+#ifndef byte
 typedef unsigned char byte;
+#endif
 #ifndef ushort
 typedef unsigned short ushort;
 #endif
@@ -52,20 +53,23 @@ namespace SF2 {
 //   sfVersionTag
 //---------------------------------------------------------
 
-enum FileType {
+enum FileType
+{
     SF2Format,
     SF3Format,
     SF4Format
 };
     
-struct sfVersionTag {
+struct sfVersionTag
+{
     int major;
     int minor;
 };
 
 enum Modulator { };
     
-enum Generator {
+enum Generator
+{
     Gen_StartAddrOfs, Gen_EndAddrOfs, Gen_StartLoopAddrOfs,
     Gen_EndLoopAddrOfs, Gen_StartAddrCoarseOfs, Gen_ModLFO2Pitch,
     Gen_VibLFO2Pitch, Gen_ModEnv2Pitch, Gen_FilterFc, Gen_FilterQ,
@@ -86,7 +90,8 @@ enum Generator {
     Gen_Dummy
 };
 
-enum Transform {
+enum Transform
+{
     Linear,
     AbsoluteValue = 2
 };
@@ -118,19 +123,27 @@ enum SampleCompression
 //   ModulatorList
 //---------------------------------------------------------
 
-struct ModulatorList {
+class ModulatorList
+{
+public:
+    ModulatorList () { zerostruct(*this); };
+   ~ModulatorList () {};
+    
     Modulator src;
     Generator dst;
     int amount;
     Modulator amtSrc;
     Transform transform;
+    
+    JUCE_LEAK_DETECTOR (ModulatorList);
 };
 
 //---------------------------------------------------------
 //   GeneratorList
 //---------------------------------------------------------
 
-union GeneratorAmount {
+union GeneratorAmount
+{
     short sword;
     ushort uword;
     struct {
@@ -138,49 +151,70 @@ union GeneratorAmount {
     };
 };
 
-struct GeneratorList {
+class GeneratorList
+{
+public:
+    GeneratorList () { zerostruct(*this); };
+   ~GeneratorList () {};
+    
     Generator gen;
     GeneratorAmount amount;
+    
+    JUCE_LEAK_DETECTOR (GeneratorList);
 };
 
 //---------------------------------------------------------
 //   Zone
 //---------------------------------------------------------
 
-struct Zone {
-    juce::Array<GeneratorList*> generators;
-    juce::Array<ModulatorList*> modulators;
+class Zone
+{
+public:
     int instrumentIndex;
+    OwnedArray<GeneratorList> generators;
+    OwnedArray<ModulatorList> modulators;
+    
+    JUCE_LEAK_DETECTOR (Zone);
 };
 
 //---------------------------------------------------------
 //   Preset
 //---------------------------------------------------------
 
-struct Preset {
-    char* name;
+class Preset
+{
+public:
+    Preset() : name(0), preset(0), bank(0), presetBagNdx(0), library(0), genre(0), morphology(0) {};
+   ~Preset() {};
+    
+    String name;
     int preset;
     int bank;
     int presetBagNdx; // used only for read
     int library;
     int genre;
     int morphology;
-    juce::Array<Zone*> zones;
+    
+    OwnedArray<Zone> zones;
 
-    Preset():name(0), preset(0), bank(0), presetBagNdx(0), library(0), genre(0), morphology(0) {}
+    JUCE_LEAK_DETECTOR (Preset);
 };
 
 //---------------------------------------------------------
 //   Instrument
 //---------------------------------------------------------
 
-struct Instrument {
-    char* name;
-    int index;        // used only for read
-    juce::Array<Zone*> zones;
-
-    Instrument();
-    ~Instrument();
+class Instrument
+{
+public:
+    Instrument() : index(0), name() {};
+   ~Instrument() {};
+    
+    int index;        // used only for reading
+    String name;
+    OwnedArray<Zone> zones;
+    
+    JUCE_LEAK_DETECTOR (Instrument);
 };
 
     
@@ -190,17 +224,21 @@ struct Instrument {
     
 /** Optional meta data for verification of samples after decompression */
 
-struct SampleMeta
+class SampleMeta
 {
-    char* name;
+public:
+    SampleMeta() : name (), samples(0), loopstart(0), loopend(0) {};
+   ~SampleMeta() {};
+    
+    String name;
     uint samples;   // original number of samples
     uint loopstart; // Relative
     uint loopend;
     
-    SampleMeta();
-    ~SampleMeta();
+    JUCE_LEAK_DETECTOR (SampleMeta);
 };
-    
+
+// Size in bytes for file positioning - critical
 #define SampleMetaSize 32
 
 /** Offsets start/end are absolute from start of chunk, measured in
@@ -209,30 +247,9 @@ struct SampleMeta
     from start after loaded into RAM. This is to support Vorbis and Flac 
     compression, which unpredictably changes offsets in the file. */
     
-struct Sample
+class Sample
 {
-    char* name;
-    
-    uint start;
-    uint end;
-    uint loopstart;
-    uint loopend;
-    uint samplerate;
-
-    int origpitch;
-    int pitchadj;
-    int sampleLink;
-    int sampletype;
-    
-    // Raw byte data, used for compression i/o
-    int byteDataSize;
-    byte * byteData;
-    // Native SF2 sample data, after decompression
-    int sampleDataSize;
-    short * sampleData;
-    
-    SampleMeta* meta;
-
+public:
      Sample();
     ~Sample();
 
@@ -242,9 +259,29 @@ struct Sample
     void setCompressionType (SampleCompression c);
     void dropSampleData();
     void dropByteData();
-    
-    void createMeta();
+    SampleMeta* createMeta();
     bool checkMeta();
+    
+    String name;
+    uint start;
+    uint end;
+    uint loopstart;
+    uint loopend;
+    uint samplerate;
+    int origpitch;
+    int pitchadj;
+    int sampleLink;
+    int sampletype;
+    // Raw byte data, used for compression i/o
+    int byteDataSize;
+    byte * byteData;
+    // Native SF2 sample data, after decompression
+    int sampleDataSize;
+    short * sampleData;
+    
+    ScopedPointer<SampleMeta> meta;
+    
+    JUCE_LEAK_DETECTOR (Sample);
 };
     
 
@@ -253,93 +290,124 @@ struct Sample
 //   SoundFont
 //---------------------------------------------------------
 
-class SoundFont {
+class SoundFont
+{
+public:
 
-    juce::File _path;
-    sfVersionTag _version;
+#if ! USE_JUCE_VORBIS
+    /** This is a hack to simplify static Ogg callbacks for decoding */
+    struct CallbackData {
+        Sample* decodeSample;
+        int     decodePosition;
+    };
+#endif
     
-    char* _engine;
-    char* _name;
-    char* _date;
-    char* _comment;
-    char* _tools;
-    char* _creator;
-    char* _product;
-    char* _copyright;
-
-    int64 _samplePos;
-    int64 _sampleLen;
-
-    juce::Array<Preset*> _presets;
-    juce::Array<Instrument*> _instruments;
-
-    juce::Array<Zone*> _pZones;
-    juce::Array<Zone*> _iZones;
-    juce::Array<Sample*> _samples;
-
-    juce::FileInputStream* _infile;
-    juce::FileOutputStream* _outfile;
-    juce::File* _f;
-
+    SoundFont (const File filename);
+   ~SoundFont ();
+    
+    bool read();
+    bool write(const File filename, FileType format, int quality);
+    void dumpPresets();
+    void log(const String message);
+    
+    
+private:
+    
     unsigned readDword();
     int readWord();
     int readShort();
     int readByte();
     int readChar();
-    int readFourcc(const char* signature);
-    int readFourcc(char* signature);
-    void readSignature(const char* signature);
-    void readSignature(char* signature);
-    void skip(int n);
-    void readSection(const char* fourcc, int len);
+    int readFourcc (const char* signature);
+    int readFourcc (char* signature);
+    void readSignature (const char* signature);
+    void readSignature (char* signature);
+    void skip (int n);
+    void readSection (const char* fourcc, int len);
     void readVersion();
-    char* readString(int n);
-    void readPhdr(int len);
-    void readBag(int, juce::Array<Zone*>* zones);
-    void readMod(int, juce::Array<Zone*>* zones);
-    void readGen(int, juce::Array<Zone*>* zones);
-    void readInst(int size);
-    void readShdr(int size);
     
-    // original sample lengths & loops for verification of compressed files
-    void readShdX(int size);
+    String readString (int n);
     
-    int readSampleData(Sample* s);
-    int readSampleDataRaw(Sample* s);
-    int readSampleDataVorbis(Sample* s);
-    int readSampleDataFlac(Sample* s);
+    void readPhdr (int len);
+    void readBag (int, Array<Zone*>* zones);
+    void readMod (int, Array<Zone*>* zones);
+    void readGen (int, Array<Zone*>* zones);
+    void readInst (int size);
+    void readShdr (int size);
+    
+    /** 
+     Non-standard extension: This optional chunk retains information on original 
+     sample lengths & loops for later verification of a compressed file.
+     */
+    void readShdX (int size);
+    
+    int readSampleData (Sample* s);
+    int readSampleDataRaw (Sample* s);
+    int readSampleDataVorbis (Sample* s);
+    int readSampleDataFlac (Sample* s);
 
-    void writeDword(int val);
-    void writeWord(unsigned short int val);
-    void writeByte(unsigned char val);
-    void writeChar(char val);
-    void writeShort(short val);
-    void write(const char* p, int n);
-    void writeStringSection(const char* fourcc, char* s);
-    void writePreset(int zoneIdx, const Preset* preset);
-    void writeModulator(const ModulatorList* m);
-    void writeGenerator(const GeneratorList* g);
-    void writeInstrument(int zoneIdx, const Instrument* instrument);
+    void writeDword (int val);
+    void writeWord (unsigned short int val);
+    void writeByte (unsigned char val);
+    void writeChar (char val);
+    void writeShort (short val);
+    void write (const char* p, int n);
+    void writeString (const String& string, size_t size);
+    void writeStringSection (const char* fourcc, const String& string);
+    void writePreset (int zoneIdx, const Preset* preset);
+    void writeModulator (const ModulatorList* m);
+    void writeGenerator (const GeneratorList* g);
+    void writeInstrument (int zoneIdx, const Instrument* instrument);
 
     void writeIfil();
-    void writeSmpl(int quality);
+    void writeSmpl (int quality);
     void writePhdr();
-    void writeBag(const char* fourcc, juce::Array<Zone*>* zones);
-    void writeMod(const char* fourcc, const juce::Array<Zone*>* zones);
-    void writeGen(const char* fourcc, juce::Array<Zone*>* zones);
+    void writeBag (const char* fourcc, Array<Zone*>* zones);
+    void writeMod (const char* fourcc, const Array<Zone*>* zones);
+    void writeGen (const char* fourcc, Array<Zone*>* zones);
     void writeInst();
     void writeShdr();
-    void writeShdrEach(const Sample* s);
+    void writeShdrEach (const Sample* s);
     
     void writeShdX();
-    void writeShdXEach(const SampleMeta* m);
+    void writeShdXEach (const SampleMeta* m);
 
-    int writeSampleDataPlain(Sample* s);
-    int writeSampleDataVorbis(Sample* s, int quality);
-    int writeSampleDataFlac(Sample* s, int quality);
+    int writeSampleDataPlain (Sample* s);
+    int writeSampleDataVorbis (Sample* s, int quality);
+    int writeSampleDataFlac (Sample* s, int quality);
     
-    bool writeCSample(Sample*, int idx);
+    bool writeCSample (Sample*, int idx);
     
+#if ! USE_JUCE_VORBIS
+    bool decodeOggVorbis (Sample* s);
+#endif
+
+protected:
+    /** You may want to access these from your code, so make it a friend class */
+    
+    OwnedArray<Preset>      _presets;
+    OwnedArray<Instrument>  _instruments;
+    OwnedArray<Sample>      _samples;
+
+private:
+    File _path;
+    sfVersionTag _version;
+    
+    String _engine;
+    String _name;
+    String _date;
+    String _comment;
+    String _tools;
+    String _creator;
+    String _product;
+    String _copyright;
+    
+    int64 _samplePos;
+    int64 _sampleLen;
+    
+    FileInputStream* _infile;   // should be a WeakReference, actually
+    FileOutputStream* _outfile; // should be a WeakReference, actually
+
     FileType _fileFormatIn, _fileFormatOut;
     int64 _fileSizeIn, _fileSizeOut;
     
@@ -348,29 +416,14 @@ class SoundFont {
     FlacAudioFormat* _audioFormatFlac;
     StringArray _qualityOptionsVorbis;
     StringArray _qualityOptionsFlac;
-
-public:
     
-    /** This is a hack to simplify static Ogg callbacks for decoding */
-    struct CallbackData {
-        Sample* decodeSample;
-        int     decodePosition;
-    };
+    Array<Zone*> _pZones; // owned by _presets after loading
+    Array<Zone*> _iZones; // owned by _instruments after loading
     
-private:
-    
-    bool decodeOggVorbis (Sample* s);
-
-public:
-    SoundFont(const File filename);
-   ~SoundFont();
-    
-    bool read();
-    bool write(const File filename, FileType format, int quality);
-    void dumpPresets();
-    void log(const String message);
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundFont);
 };
-}
+    
+} // namespace
 
 
 

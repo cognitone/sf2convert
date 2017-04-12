@@ -4,7 +4,7 @@
 //
 //  Copyright (C) 2015 Davy Triponney (Polyphone)
 //                2010 Werner Schweer and others (MuseScore)
-//                2017 Cognitone
+//                2017 Cognitone (Juce port, converter)
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -21,25 +21,13 @@
 
 #include "sfont.h"
 
+#if ! USE_JUCE_VORBIS
 #include "juce_audio_formats/codecs/oggvorbis/codec.h"
 #include "juce_audio_formats/codecs/oggvorbis/vorbisenc.h"
 #include "juce_audio_formats/codecs/oggvorbis/vorbisfile.h"
-
+#endif
 
 using namespace SF2;
-
-#define BE_SHORT(x) ((((x)&0xFF)<<8) | (((x)>>8)&0xFF))
-#ifdef __i486__
-#define BE_LONG(x) \
-    ({ int __value; \
-    asm ("bswap %1; movl %1,%0" : "=g" (__value) : "r" (x)); \
-    __value; })
-#else
-#define BE_LONG(x) ((((x)&0xFF)<<24) | \
-    (((x)&0xFF00)<<8) | \
-    (((x)&0xFF0000)>>8) | \
-    (((x)>>24)&0xFF))
-#endif
 
 #define FOURCC(a, b, c, d) a << 24 | b << 16 | c << 8 | d
 
@@ -49,22 +37,30 @@ using namespace SF2;
 //   Sample
 //---------------------------------------------------------
 
-Sample::Sample()
+Sample::Sample() :
+    name(),
+    start(0),
+    end(0),
+    loopstart(0),
+    loopend(0),
+    samplerate(0),
+    origpitch(0),
+    pitchadj(0),
+    sampleLink(0),
+    sampletype(SampleType::Mono),
+    byteDataSize(0),
+    byteData(nullptr),
+    sampleDataSize(0),
+    sampleData(nullptr),
+    meta()
 {
-    name = nullptr;
-    byteData = nullptr;
-    byteDataSize = 0;
-    sampleData = nullptr;
-    sampleDataSize = 0;
-    meta = nullptr;
+    // All members are required to be all-zero, for a clean Sample instance is used as terminator in shdr chunk!
 }
 
 Sample::~Sample()
 {
-    free(name);
     dropSampleData();
     dropByteData();
-    free(meta);
 }
 
 void Sample::dropByteData()
@@ -102,9 +98,11 @@ void Sample::setCompressionType (SampleCompression c)
     }
 }
 
-/** Getting the number of samples is a bit shaky, because this is derived from start/end offsets,
-    which are subject to change when written to a file that uses compression. Luckily, once the
-    sample data was loaded (and/or decompressed), we know for sure.
+/** 
+ Getting the number of samples is a bit shaky, because this is
+ derived from start/end offsets, which are subject to change when 
+ written to a file that uses compression. Luckily, once the sample 
+ data was loaded (and/or decompressed), we know for sure.
  */
 int Sample::numSamples() const
 {
@@ -114,21 +112,23 @@ int Sample::numSamples() const
         return end - start;
 }
 
-/** Since sample & loop offsets are 'repurposed' in compressed files, this optional meta data
-    preserves them, so we can verify if decompression worked properly after load. 
+/** 
+ Since sample & loop offsets are 'repurposed' in compressed files, 
+ this optional meta data preserves them, so we can verify if 
+ decompression worked properly after load.
  */
-void Sample::createMeta()
+SampleMeta* Sample::createMeta()
 {
-    if (meta)
-        free(meta);
     meta = new SampleMeta();
-    meta->name = strdup(name);
+    meta->name = name;
     meta->samples = numSamples();
     meta->loopstart = loopstart;
     meta->loopend = loopend;
+    return meta;
 }
 
-/** Verify if sample was properly restored after decompression. 
+/** 
+ Verify if sample was properly restored after decompression.
  */
 bool Sample::checkMeta()
 {
@@ -140,54 +140,28 @@ bool Sample::checkMeta()
 }
 
 
-SampleMeta::SampleMeta()
-{
-    name = nullptr;
-}
-
-SampleMeta::~SampleMeta()
-{
-    free(name);
-}
-
-//---------------------------------------------------------
-//   Instrument
-//---------------------------------------------------------
-
-Instrument::Instrument()
-{
-    name = 0;
-}
-
-Instrument::~Instrument()
-{
-    free(name);
-}
-
 //---------------------------------------------------------
 //   SoundFont
 //---------------------------------------------------------
 
 SoundFont::SoundFont (const File filename) :
+    _path(filename),
+    _engine(),
+    _name(),
+    _date(),
+    _comment(),
+    _tools(),
+    _creator(),
+    _product(),
+    _copyright(),
+    _infile(nullptr),
+    _outfile(nullptr),
+    _fileFormatIn(SF2Format),
+    _fileFormatOut(SF2Format),
+    _fileSizeIn(0),
+    _fileSizeOut(0),
     _manager()
 {
-    _path      = filename;
-    _engine    = nullptr;
-    _name      = nullptr;
-    _date      = nullptr;
-    _comment   = nullptr;
-    _tools     = nullptr;
-    _creator   = nullptr;
-    _product   = nullptr;
-    _copyright = nullptr;
-
-    _fileFormatIn = SF2Format;
-    _fileFormatOut = SF2Format;
-    _infile = nullptr;
-    _outfile = nullptr;
-    _fileSizeIn = 0;
-    _fileSizeOut = 0;
-    
     _manager.registerBasicFormats();
     _audioFormatVorbis = dynamic_cast<OggVorbisAudioFormat*> (_manager.findFormatForFileExtension("ogg"));
     _audioFormatFlac   = dynamic_cast<FlacAudioFormat*> (_manager.findFormatForFileExtension("flac"));
@@ -211,14 +185,14 @@ SoundFont::SoundFont (const File filename) :
 
 SoundFont::~SoundFont()
 {
-    free(_engine);
-    free(_name);
-    free(_date);
-    free(_comment);
-    free(_tools);
-    free(_creator);
-    free(_product);
-    free(_copyright);
+    _manager.clearFormats();
+    _qualityOptionsVorbis.clear();
+    _qualityOptionsFlac.clear();
+    _samples.clear();
+    _instruments.clear();
+    _presets.clear();
+    _pZones.clear();
+    _iZones.clear();
 }
 
 //---------------------------------------------------------
@@ -282,7 +256,7 @@ bool SoundFont::read()
 //   skip
 //---------------------------------------------------------
 
-void SoundFont::skip(int n)
+void SoundFont::skip (int n)
 {
     int64 pos = _infile->getPosition();
     if (!_infile->setPosition(pos + n))
@@ -293,13 +267,13 @@ void SoundFont::skip(int n)
 //   readFourcc
 //---------------------------------------------------------
 
-int SoundFont::readFourcc(char* signature)
+int SoundFont::readFourcc (char* signature)
 {
     readSignature(signature);
     return readDword();
 }
 
-int SoundFont::readFourcc(const char* signature)
+int SoundFont::readFourcc (const char* signature)
 {
     readSignature(signature);
     return readDword();
@@ -309,7 +283,7 @@ int SoundFont::readFourcc(const char* signature)
 //   readSignature
 //---------------------------------------------------------
 
-void SoundFont::readSignature(const char* signature)
+void SoundFont::readSignature (const char* signature)
 {
     char fourcc[4];
     readSignature(fourcc);
@@ -332,10 +306,7 @@ unsigned SoundFont::readDword()
     unsigned format;
     if (_infile->read((char*)&format, 4) != 4)
         throw("unexpected end of file");
-    if (ByteOrder::isBigEndian())
-        return BE_LONG(format);
-    else
-        return format;
+    return juce::ByteOrder::swapIfBigEndian(format);
 }
 
 //---------------------------------------------------------
@@ -347,10 +318,7 @@ int SoundFont::readWord()
     unsigned short format;
     if (_infile->read((char*)&format, 2) != 2)
         throw("unexpected end of file");
-    if (ByteOrder::isBigEndian())
-        return BE_SHORT(format);
-    else
-        return format;
+    return juce::ByteOrder::swapIfBigEndian(format);
 }
 
 //---------------------------------------------------------
@@ -362,10 +330,7 @@ int SoundFont::readShort()
     short format;
     if (_infile->read((char*)&format, 2) != 2)
         throw("unexpected end of file");
-    if (ByteOrder::isBigEndian())
-        return BE_SHORT(format);
-    else
-        return format;
+    return juce::ByteOrder::swapIfBigEndian(format);
 }
 
 //---------------------------------------------------------
@@ -413,24 +378,28 @@ void SoundFont::readVersion()
 //   readString
 //---------------------------------------------------------
 
-char* SoundFont::readString(int n)
+String SoundFont::readString (int n)
 {
-	// VC++ doesn't allow variable array size
-	jassert(n < 1024);
+    if (n == 0)
+        return String::empty;
+    
+	// Visual C++ doesn't allow a variable array size here
+    if (n > 2014) n = 1024;
     char data[1024];
 
     if (_infile->read((char*)data, n) != n)
         throw("unexpected end of file");
     if (data[n-1] != 0)
         data[n] = 0;
-    return strdup(data);
+    
+    return String::fromUTF8(data);
 }
 
 //---------------------------------------------------------
 //   readSection
 //---------------------------------------------------------
 
-void SoundFont::readSection(const char* fourcc, int len)
+void SoundFont::readSection (const char* fourcc, int len)
 {
     switch(FOURCC(fourcc[0], fourcc[1], fourcc[2], fourcc[3])) {
     case FOURCC('i', 'f', 'i', 'l'):    // version
@@ -510,7 +479,7 @@ void SoundFont::readSection(const char* fourcc, int len)
 //   readPhdr
 //---------------------------------------------------------
 
-void SoundFont::readPhdr(int len)
+void SoundFont::readPhdr (int len)
 {
     if (len < (38 * 2))
         throw("phdr too short");
@@ -551,7 +520,7 @@ void SoundFont::readPhdr(int len)
 //   readBag
 //---------------------------------------------------------
 
-void SoundFont::readBag(int len, juce::Array<Zone*>* zones)
+void SoundFont::readBag (int len, juce::Array<Zone*>* zones)
 {
     if (len % 4)
         throw("bag size not a multiple of 4");
@@ -588,7 +557,7 @@ void SoundFont::readBag(int len, juce::Array<Zone*>* zones)
 //   readMod
 //---------------------------------------------------------
 
-void SoundFont::readMod(int size, juce::Array<Zone*>* zones)
+void SoundFont::readMod (int size, juce::Array<Zone*>* zones)
 {
     for (int z = 0; z < zones->size(); z++)
     {
@@ -617,7 +586,7 @@ void SoundFont::readMod(int size, juce::Array<Zone*>* zones)
 //   readGen
 //---------------------------------------------------------
 
-void SoundFont::readGen(int size, juce::Array<Zone*>* zones)
+void SoundFont::readGen (int size, juce::Array<Zone*>* zones)
 {
     if (size % 4)
         throw(String("bad generator list size"));
@@ -652,7 +621,7 @@ void SoundFont::readGen(int size, juce::Array<Zone*>* zones)
 //   readInst
 //---------------------------------------------------------
 
-void SoundFont::readInst(int size)
+void SoundFont::readInst (int size)
 {
     int n = size / 22;
     int index1 = 0, index2;
@@ -715,16 +684,13 @@ void SoundFont::readShdX (int size)
     
     for (int i = 0; i < n-1; ++i)
     {
-        SampleMeta* m = new SampleMeta;
+        SampleMeta* m = _samples[i]->createMeta();
         m->name       = readString(20);
         m->samples    = readDword();
         m->loopstart  = readDword();
         m->loopend    = readDword();
-        
-        // attach to corresponding sample:
-        _samples[i]->meta = m;
         // it is required that samples & meta headers be written in identical sequence!
-        jassert (strcmp(_samples[i]->name, m->name) == 0);
+        jassert (_samples[i]->name == m->name);
     }
     skip(SampleMetaSize);   // trailing record
 }
@@ -737,7 +703,7 @@ void SoundFont::readShdX (int size)
 //   write
 //---------------------------------------------------------
 
-bool SoundFont::write(const File filename, FileType format, int quality)
+bool SoundFont::write (const File filename, FileType format, int quality)
 {
     ScopedPointer<FileOutputStream> out = new FileOutputStream(filename);
     
@@ -745,6 +711,12 @@ bool SoundFont::write(const File filename, FileType format, int quality)
     _outfile->setPosition(0);
     _outfile->truncate();
     _fileFormatOut = format;
+    
+    /** Add a warning that samples were decompressed from a lossy format */
+    if (_fileFormatIn == SF2::FileType::SF3Format && _fileFormatOut != _fileFormatIn)
+    {
+        _comment << "\n\n" << "CAUTION: Samples in this file were decompressed from a lossy format (Ogg Vorbis). If you want to edit this file, you should get the original uncompressed SF2 file.";
+    }
     
     int64 riffLenPos;
     int64 listLenPos;
@@ -760,22 +732,14 @@ bool SoundFont::write(const File filename, FileType format, int quality)
         _outfile->write("INFO", 4);
 
         writeIfil();
-        if (_name)
-            writeStringSection("INAM", _name);
-        if (_engine)
-            writeStringSection("isng", _engine);
-        if (_product)
-            writeStringSection("IPRD", _product);
-        if (_creator)
-            writeStringSection("IENG", _creator);
-        if (_tools)
-            writeStringSection("ISFT", _tools);
-        if (_date)
-            writeStringSection("ICRD", _date);
-        if (_comment)
-            writeStringSection("ICMT", _comment);
-        if (_copyright)
-            writeStringSection("ICOP", _copyright);
+        if (_name.isNotEmpty())      writeStringSection("INAM", _name);
+        if (_engine.isNotEmpty())    writeStringSection("isng", _engine);
+        if (_product.isNotEmpty())   writeStringSection("IPRD", _product);
+        if (_creator.isNotEmpty())   writeStringSection("IENG", _creator);
+        if (_tools.isNotEmpty())     writeStringSection("ISFT", _tools);
+        if (_date.isNotEmpty())      writeStringSection("ICRD", _date);
+        if (_comment.isNotEmpty())   writeStringSection("ICMT", _comment);
+        if (_copyright.isNotEmpty()) writeStringSection("ICOP", _copyright);
 
         int64 pos = _outfile->getPosition();
         _outfile->setPosition(listLenPos);
@@ -839,10 +803,9 @@ bool SoundFont::write(const File filename, FileType format, int quality)
 //   writeDword
 //---------------------------------------------------------
 
-void SoundFont::writeDword(int val)
+void SoundFont::writeDword (int val)
 {
-    if (ByteOrder::isBigEndian())
-        val = BE_LONG(val);
+    val = juce::ByteOrder::swapIfBigEndian(val);
     write((char*)&val, 4);
 }
 
@@ -850,10 +813,9 @@ void SoundFont::writeDword(int val)
 //   writeWord
 //---------------------------------------------------------
 
-void SoundFont::writeWord(unsigned short int val)
+void SoundFont::writeWord (unsigned short int val)
 {
-    if (ByteOrder::isBigEndian())
-        val = BE_SHORT(val);
+    val = juce::ByteOrder::swapIfBigEndian(val);
     write((char*)&val, 2);
 }
 
@@ -861,7 +823,7 @@ void SoundFont::writeWord(unsigned short int val)
 //   writeByte
 //---------------------------------------------------------
 
-void SoundFont::writeByte(unsigned char val)
+void SoundFont::writeByte (unsigned char val)
 {
     write((char*)&val, 1);
 }
@@ -870,7 +832,7 @@ void SoundFont::writeByte(unsigned char val)
 //   writeChar
 //---------------------------------------------------------
 
-void SoundFont::writeChar(char val)
+void SoundFont::writeChar (char val)
 {
     write((char*)&val, 1);
 }
@@ -879,10 +841,9 @@ void SoundFont::writeChar(char val)
 //   writeShort
 //---------------------------------------------------------
 
-void SoundFont::writeShort(short val)
+void SoundFont::writeShort (short val)
 {
-    if (ByteOrder::isBigEndian())
-        val = BE_SHORT(val);
+    val = juce::ByteOrder::swapIfBigEndian(val);
     write((char*)&val, 2);
 }
 
@@ -890,18 +851,36 @@ void SoundFont::writeShort(short val)
 //   write
 //---------------------------------------------------------
 
-void SoundFont::write(const char* p, int n)
+void SoundFont::write (const char* p, int n)
 {
     if (!_outfile->write(p, n))
         throw("write error");
 }
 
 //---------------------------------------------------------
+//   writeString
+//---------------------------------------------------------
+
+void SoundFont::writeString (const String& string, size_t size)
+{
+    char name[size];
+    memset(name, 0, size);
+    // Yes, there are better ways to port this ...    
+    if (string.getNumBytesAsUTF8() > 0)
+        memcpy(name,
+               string.toRawUTF8(),
+               jmin(size, strlen(string.toRawUTF8())));
+    
+    write(name, size);
+}
+
+//---------------------------------------------------------
 //   writeStringSection
 //---------------------------------------------------------
 
-void SoundFont::writeStringSection(const char* fourcc, char* s)
+void SoundFont::writeStringSection (const char* fourcc, const String& string)
 {
+    const char* s = string.toRawUTF8();
     write(fourcc, 4);
     int nn = (int)strlen(s) + 1;
     int n = ((nn + 1) / 2) * 2;
@@ -958,13 +937,9 @@ void SoundFont::writePhdr()
 //   writePreset
 //---------------------------------------------------------
 
-void SoundFont::writePreset(int zoneIdx, const Preset* preset)
+void SoundFont::writePreset (int zoneIdx, const Preset* preset)
 {
-    char name[20];
-    memset(name, 0, 20);
-    if (preset->name)
-        memcpy(name, preset->name, strlen(preset->name));
-    write(name, 20);
+    writeString(preset->name, 20);
     writeWord(preset->preset);
     writeWord(preset->bank);
     writeWord(zoneIdx);
@@ -977,7 +952,7 @@ void SoundFont::writePreset(int zoneIdx, const Preset* preset)
 //   writeBag
 //---------------------------------------------------------
 
-void SoundFont::writeBag(const char* fourcc, juce::Array<Zone*>* zones)
+void SoundFont::writeBag (const char* fourcc, juce::Array<Zone*>* zones)
 {
     write(fourcc, 4);
     int n = zones->size();
@@ -1002,7 +977,7 @@ void SoundFont::writeBag(const char* fourcc, juce::Array<Zone*>* zones)
 //   writeMod
 //---------------------------------------------------------
 
-void SoundFont::writeMod(const char* fourcc, const juce::Array<Zone*>* zones)
+void SoundFont::writeMod (const char* fourcc, const juce::Array<Zone*>* zones)
 {
     write(fourcc, 4);
     int n = 0;
@@ -1023,8 +998,8 @@ void SoundFont::writeMod(const char* fourcc, const juce::Array<Zone*>* zones)
             writeModulator(m);
         }
     }
+    // Empty terminator
     ModulatorList mod;
-    memset(&mod, 0, sizeof(mod));
     writeModulator(&mod);
 }
 
@@ -1032,7 +1007,7 @@ void SoundFont::writeMod(const char* fourcc, const juce::Array<Zone*>* zones)
 //   writeModulator
 //---------------------------------------------------------
 
-void SoundFont::writeModulator(const ModulatorList* m)
+void SoundFont::writeModulator (const ModulatorList* m)
 {
     writeWord(m->src);
     writeWord(m->dst);
@@ -1045,7 +1020,7 @@ void SoundFont::writeModulator(const ModulatorList* m)
 //   writeGen
 //---------------------------------------------------------
 
-void SoundFont::writeGen(const char* fourcc, juce::Array<Zone*>* zones)
+void SoundFont::writeGen (const char* fourcc, juce::Array<Zone*>* zones)
 {
     write(fourcc, 4);
     int n = 0;
@@ -1067,8 +1042,8 @@ void SoundFont::writeGen(const char* fourcc, juce::Array<Zone*>* zones)
             writeGenerator(g);
         }
     }
+    // Empty terminator
     GeneratorList gen;
-    memset(&gen, 0, sizeof(gen));
     writeGenerator(&gen);
 }
 
@@ -1076,7 +1051,7 @@ void SoundFont::writeGen(const char* fourcc, juce::Array<Zone*>* zones)
 //   writeGenerator
 //---------------------------------------------------------
 
-void SoundFont::writeGenerator(const GeneratorList* g)
+void SoundFont::writeGenerator (const GeneratorList* g)
 {
     writeWord(g->gen);
     if (g->gen == Gen_KeyRange || g->gen == Gen_VelRange) {
@@ -1116,11 +1091,7 @@ void SoundFont::writeInst()
 
 void SoundFont::writeInstrument(int zoneIdx, const Instrument* instrument)
 {
-    char name[20];
-    memset(name, 0, 20);
-    if (instrument->name)
-        memcpy(name, instrument->name, strlen(instrument->name));
-    write(name, 20);
+    writeString(instrument->name, 20);
     writeWord(zoneIdx);
 }
 
@@ -1136,8 +1107,8 @@ void SoundFont::writeShdr()
     for (int i = 0; i < _samples.size(); i++)
         writeShdrEach(_samples[i]);
 
+    // Empty last sample as terminator
     Sample s;
-    memset(&s, 0, sizeof(s));
     writeShdrEach(&s);
 }
 
@@ -1147,11 +1118,7 @@ void SoundFont::writeShdr()
 
 void SoundFont::writeShdrEach (const Sample* s)
 {
-    char name[20];
-    memset(name, 0, 20);
-    if (s->name)
-        memcpy(name, s->name, strlen(s->name));
-    write(name, 20);
+    writeString(s->name, 20);
     writeDword(s->start);
     writeDword(s->end);
     writeDword(s->loopstart);
@@ -1184,8 +1151,8 @@ void SoundFont::writeShdX()
     for (int i = 0; i < _samples.size(); i++)
         writeShdXEach(_samples[i]->meta);
 
+    // Empty terminator
     SampleMeta m;
-    memset(&m, 0, sizeof(m));
     writeShdXEach(&m);
 }
 
@@ -1198,15 +1165,12 @@ void SoundFont::writeShdXEach (const SampleMeta* m)
     jassert (m != nullptr);
     
     int64 start = _outfile->getPosition();
-    char name[20];
-    memset(name, 0, 20);
-    if (m->name)
-        memcpy(name, m->name, strlen(m->name));
-    write(name, 20);
+    
+    writeString(m->name, 20);
     writeDword(m->samples);
     writeDword(m->loopstart);
     writeDword(m->loopend);
-    // safety check
+    // Check SampleMetaSize is correct
     jassert (_outfile->getPosition() - start == SampleMetaSize);
 }
 
@@ -1704,6 +1668,7 @@ int SoundFont::writeSampleDataFlac (Sample* s, int quality)
 #endif
 
 
+#if ! USE_JUCE_VORBIS
 //---------------------------------------------------------
 //   Ogg Vorbis Decompression
 //---------------------------------------------------------
@@ -1803,6 +1768,8 @@ bool SoundFont::decodeOggVorbis (Sample* s)
     return true;
 }
 
+#endif // USE_JUCE_VORBIS
+
 #if 0
 #pragma mark Misc
 #endif
@@ -1815,7 +1782,7 @@ void SoundFont::dumpPresets()
     {
         const Preset* p = _presets.getUnchecked(i);
         
-        fprintf(stderr, "%03d %04x-%02x %s\n", idx, p->bank, p->preset, p->name);
+        fprintf(stderr, "%03d %04x-%02x %s\n", idx, p->bank, p->preset, p->name.toRawUTF8());
         ++idx;
     }
 }

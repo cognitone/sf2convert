@@ -4,7 +4,7 @@
 //
 //  Copyright (C) 2015 Davy Triponney (Polyphone)
 //                2010 Werner Schweer and others (MuseScore)
-//                2017 Cognitone
+//                2017 Cognitone (Juce port, converter)
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -121,21 +121,23 @@ int main(int argc, char* argv[])
     File inFilename (commandLine[0]);
     File outFilename (commandLine[1]);
 
-    SF2::SoundFont sf(inFilename);
-    sf.log("Reading " + inFilename.getFullPathName());
-    
-    if (!sf.read()) {
-        fprintf(stderr, "file read error\n");
-        exit(3);
-    }
-    
-    if (dump)
-        sf.dumpPresets();
-
-    if (convert)
     {
-        sf.log("Writing " + outFilename.getFullPathName());
-        sf.write (outFilename, format, quality);
+        SF2::SoundFont sf(inFilename);
+        sf.log("Reading " + inFilename.getFullPathName());
+        
+        if (!sf.read()) {
+            fprintf(stderr, "Error reading file\n");
+            return(3);
+        }
+        
+        if (dump)
+            sf.dumpPresets();
+
+        if (convert)
+        {
+            sf.log("Writing " + outFilename.getFullPathName());
+            sf.write (outFilename, format, quality);
+        }
     }
     return 0;
 }
