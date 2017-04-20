@@ -10,26 +10,25 @@ Based on the SoundFont reader/writer class by Davy Triponney (2015, [Polphone](h
 ## Usage
 
 Compression with Ogg Vorbis (o)    
-`sf2convert -zo <infile.SF2> <outfile.SF3>`    
+`sf2convert -zo <infile.sf2> <outfile.sf3>`    
      
 Compression with FLAC (f)    
-`sf2convert -zf <infile.SF2> <outfile.SF4>`    
+`sf2convert -zf <infile.sf2> <outfile.sf4>`    
     
 Extraction of any compressed format:    
-`sf2convert -x <infile.SF3> <outfile.SF2>    
-sf2convert -x <infile.SF4> <outfile.SF2>`    
+`sf2convert -x <infile.sf?> <outfile.sf2>`    
     
 For additional options, run the utility with an empty command line.
 
 
+## Download
+
+This repository does not include compiled binaries. If you want to use sf2convert as an end user, you can download it for Windows and Mac from the [Cognitone website](http://www.cognitone.com/link.stml?from=github&to=opensource).
+
+## How To Compile
+
+The SoundFont class was ported to Juce and thus can be integrated with Juce projects rather easily. To compile, you need to get Juce 4 and use Projucer to create project exporters for your target platform.
+
 ## License
 
 Released by Cognitone under GPLv2.
-
-## Download
-
-This repository does not include compiled binaries. If you want to use sf2convert right now, you can download it for Windows and Mac from the [Cognitone website](http://www.cognitone.com/link.stml?from=github&to=opensource).
-
-## Usage in Juce Projects
-
-The SoundFont class can be integrated with Juce projects easily. Note however, that since this source and its origins are GPL, the license may or may not work for you, depending on how your audio software is licensed and how you integrate it with your project. If you use it for a separate utility, you'll need to publish that entire utility as freeware under GPLv2 (wich is exactly what we did with sf2convert).
