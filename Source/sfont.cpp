@@ -1,10 +1,12 @@
-//=============================================================================
+///////////////////////////////////////////////////////////////////////////////
+//
 //  sf2convert
 //  SoundFont Conversion/Compression Utility
 //
-//  Copyright (C) 2015 Davy Triponney (Polyphone)
-//                2010 Werner Schweer and others (MuseScore)
-//                2017 Cognitone (Juce port, converter)
+//  Copyright (C)
+//  2010 Werner Schweer and others (MuseScore)
+//  2015 Davy Triponney (Polyphone)
+//  2017 Cognitone (Juce port, converter)
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -17,7 +19,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program; if not, write to the Free Software
 //  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-//=============================================================================
+//
+///////////////////////////////////////////////////////////////////////////////
 
 #include "sfont.h"
 
@@ -863,15 +866,17 @@ void SoundFont::write (const char* p, int n)
 
 void SoundFont::writeString (const String& string, size_t size)
 {
-    char name[size];
-    memset(name, 0, size);
+	// Visual C++ doesn't allow variable arrays
+	const size_t limit = 1024;
+    char name[limit];
+    memset(name, 0, limit);
     // Yes, there are better ways to port this ...    
     if (string.getNumBytesAsUTF8() > 0)
         memcpy(name,
                string.toRawUTF8(),
-               jmin(size, strlen(string.toRawUTF8())));
+               jmin(limit, size, strlen(string.toRawUTF8())));
     
-    write(name, size);
+    write(name, jmin(limit, size));
 }
 
 //---------------------------------------------------------

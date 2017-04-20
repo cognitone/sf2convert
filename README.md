@@ -24,7 +24,7 @@ For additional options, run the utility with an empty command line.
 
 ## License
 
-Released by Cognitone under GPLv3.
+Released by Cognitone under GPLv2.
 
 ## Download
 
@@ -32,4 +32,4 @@ This repository does not include compiled binaries. If you want to use sf2conver
 
 ## Usage in Juce Projects
 
-The SoundFont class can be integrated with Juce projects easily. Note however, that since this source and its origins are GPL, the license may or may not work for you, depending on how your audio software is licensed and how you integrate it with your project. If you use it for a separate utility, you'll need to publish that entire utility as freeware under GPL (wich is exactly what we did with sf2convert).
+The SoundFont class can be integrated with Juce projects easily. Note however, that since this source and its origins are GPL, the license may or may not work for you, depending on how your audio software is licensed and how you integrate it with your project. If you use it for a separate utility, you'll need to publish that entire utility as freeware under GPLv2 (wich is exactly what we did with sf2convert).
