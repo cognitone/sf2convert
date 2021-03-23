@@ -93,11 +93,11 @@ void Sample::setCompressionType (SampleCompression c)
     {
         case SampleCompression::Vorbis :
             sampletype &= ~((int)(SampleType::TypeVorbis + SampleType::TypeFlac));
-            sampletype |= SampleType::TypeVorbis;
+            sampletype |= (int)SampleType::TypeVorbis;
             break;
         case SampleCompression::Flac :
             sampletype &= ~((int)(SampleType::TypeVorbis + SampleType::TypeFlac));
-            sampletype |= SampleType::TypeFlac;
+            sampletype |= (int)SampleType::TypeFlac;
             break;
         case SampleCompression::Raw :
             sampletype &= ~((int)(SampleType::TypeVorbis + SampleType::TypeFlac));
