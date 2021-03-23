@@ -247,6 +247,11 @@ bool SoundFont::read()
         // load sample data
         for (int i = 0; i < _samples.size(); i++)
             readSampleData(_samples[i]);
+
+#if FIX_INVALID_SAMPLETYPE
+        fixSampleType();
+#endif
+
     }
     catch (juce::String s) {
         log(s);
@@ -1670,6 +1675,52 @@ int SoundFont::writeSampleDataFlac (Sample* s, int quality)
     return numBytes;
 }
 
+
+
+#if FIX_INVALID_SAMPLETYPE
+//---------------------------------------------------------
+//   fixSampleType
+//---------------------------------------------------------
+
+void SoundFont::fixSampleType()
+{
+    for (int i = 0; i < _samples.size(); i++) {
+        Sample * s = _samples[i];
+        switch (s->sampletype & 15) {
+            case 3:
+                s->sampletype &= 15;
+                switch (_fileFormatIn) {
+                    case SF3Format:
+                        s->sampletype |= 2;
+                        break;
+
+                    case SF4Format:
+                        s->sampletype |= 1;
+                        break;
+
+                    default:
+                        break;
+                }
+                break;
+
+            case 5:
+            case 6:
+                s->sampletype &= 15;
+                s->sampletype |= 4;
+                break;
+
+            case 9:
+            case 10:
+                s->sampletype &= 15;
+                s->sampletype |= 8;
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+#endif
 
 
 #if 0

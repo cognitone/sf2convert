@@ -33,6 +33,9 @@
 // Enable this, if compression format is set individually per sample (not yet possible)
 #define USE_MULTIPLE_COMPRESSION_FORMATS 0
 
+// Disable this, if you don't want to fix invalid sampletype.
+#define FIX_INVALID_SAMPLETYPE 1
+
 #ifndef byte
 typedef unsigned char byte;
 #endif
@@ -381,6 +384,10 @@ private:
     
     bool writeCSample (Sample*, int idx);
     
+#if FIX_INVALID_SAMPLETYPE
+    void fixSampleType();
+#endif
+
 #if ! USE_JUCE_VORBIS
     bool decodeOggVorbis (Sample* s);
 #endif
