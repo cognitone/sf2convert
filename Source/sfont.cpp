@@ -388,18 +388,18 @@ void SoundFont::readVersion()
 String SoundFont::readString (int n)
 {
     if (n == 0)
-        return String::empty;
+        return "";
     
-	// Visual C++ doesn't allow a variable array size here
-    if (n > 2014) n = 1024;
-    char data[1024];
+    char *data = new char[n];
 
     if (_infile->read((char*)data, n) != n)
         throw("unexpected end of file");
     if (data[n-1] != 0)
         data[n] = 0;
-    
-    return String::fromUTF8(data);
+
+    auto ret = String::fromUTF8(data);
+    delete [] data;
+    return ret;
 }
 
 //---------------------------------------------------------
@@ -870,17 +870,15 @@ void SoundFont::write (const char* p, int n)
 
 void SoundFont::writeString (const String& string, size_t size)
 {
-	// Visual C++ doesn't allow variable arrays
-	const size_t limit = 1024;
-    char name[limit];
-    memset(name, 0, limit);
-    // Yes, there are better ways to port this ...    
+    char *name = new char[size]();
+    // Yes, there are better ways to port this ...
     if (string.getNumBytesAsUTF8() > 0)
         memcpy(name,
                string.toRawUTF8(),
-               jmin(limit, size, strlen(string.toRawUTF8())));
+               size);
     
-    write(name, jmin(limit, size));
+    write(name, size);
+    delete [] name;
 }
 
 //---------------------------------------------------------
