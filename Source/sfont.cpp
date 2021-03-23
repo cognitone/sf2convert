@@ -1688,7 +1688,7 @@ void SoundFont::fixSampleType()
         Sample * s = _samples[i];
         switch (s->sampletype & 15) {
             case 3:
-                s->sampletype &= 15;
+                s->sampletype &= ~15;
                 switch (_fileFormatIn) {
                     case SF3Format:
                         s->sampletype |= 2;
@@ -1705,13 +1705,13 @@ void SoundFont::fixSampleType()
 
             case 5:
             case 6:
-                s->sampletype &= 15;
+                s->sampletype &= ~15;
                 s->sampletype |= 4;
                 break;
 
             case 9:
             case 10:
-                s->sampletype &= 15;
+                s->sampletype &= ~15;
                 s->sampletype |= 8;
                 break;
 
