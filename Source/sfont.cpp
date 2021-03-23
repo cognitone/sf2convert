@@ -1705,12 +1705,14 @@ void SoundFont::fixSampleType()
 
             case 5:
             case 6:
+            case 7:
                 s->sampletype &= ~15;
                 s->sampletype |= 4;
                 break;
 
             case 9:
             case 10:
+            case 11:
                 s->sampletype &= ~15;
                 s->sampletype |= 8;
                 break;
