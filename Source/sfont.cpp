@@ -906,6 +906,7 @@ void SoundFont::writeIfil()
     write("ifil", 4);
     writeDword(4);
     unsigned char data[4];
+    if (_fileFormatOut == SF2Format) _version.major = 2;
     if (_fileFormatOut == SF3Format) _version.major = 3;
     if (_fileFormatOut == SF4Format) _version.major = 4;
     data[0] = _version.major;
