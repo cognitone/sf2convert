@@ -244,14 +244,12 @@ bool SoundFont::read()
                 readSection(fourcc, len3);
             }
         }
-        // load sample data
-        for (int i = 0; i < _samples.size(); i++)
-            readSampleData(_samples[i]);
-
 #if FIX_INVALID_SAMPLETYPE
         fixSampleType();
 #endif
-
+        // load sample data
+        for (int i = 0; i < _samples.size(); i++)
+            readSampleData(_samples[i]);
     }
     catch (juce::String s) {
         log(s);
@@ -1684,42 +1682,35 @@ int SoundFont::writeSampleDataFlac (Sample* s, int quality)
 
 void SoundFont::fixSampleType()
 {
+    int flag = 0xf;
     for (int i = 0; i < _samples.size(); i++) {
-        Sample * s = _samples[i];
-        switch (s->sampletype & 15) {
-            case 3:
-                s->sampletype &= ~15;
-                switch (_fileFormatIn) {
-                    case SF3Format:
-                        s->sampletype |= 2;
-                        break;
-
-                    case SF4Format:
-                        s->sampletype |= 1;
-                        break;
-
-                    default:
-                        break;
+        flag &= _samples[i]->sampletype;
+    }
+    switch (flag) {
+        case 1:
+            if (_fileFormatIn != SF2Format)
+            {
+                for (int i = 0; i < _samples.size(); i++) {
+                    if (_samples[i]->sampletype != 1) {
+                        _samples[i]->sampletype &= ~1;
+                    }
+                    _samples[i]->sampletype |= SampleType::TypeVorbis;
                 }
-                break;
-
-            case 5:
-            case 6:
-            case 7:
-                s->sampletype &= ~15;
-                s->sampletype |= 4;
-                break;
-
-            case 9:
-            case 10:
-            case 11:
-                s->sampletype &= ~15;
-                s->sampletype |= 8;
-                break;
-
-            default:
-                break;
+            }
+            break;
+        case 2:
+        case 3:
+        {
+            for (int i = 0; i < _samples.size(); i++) {
+                if (_samples[i]->sampletype != 2) {
+                    _samples[i]->sampletype &= ~2;
+                }
+                _samples[i]->sampletype |= SampleType::TypeFlac;
+            }
         }
+            break;
+        default:
+            break;
     }
 }
 #endif
