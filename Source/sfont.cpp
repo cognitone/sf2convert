@@ -92,8 +92,12 @@ void Sample::setCompressionType (SampleCompression c)
     switch (c)
     {
         case SampleCompression::Vorbis :
+            sampletype &= ~((int)(SampleType::TypeVorbis + SampleType::TypeFlac));
+            sampletype |= (int)SampleType::TypeVorbis;
+            break;
         case SampleCompression::Flac :
-            sampletype |= (int)c;
+            sampletype &= ~((int)(SampleType::TypeVorbis + SampleType::TypeFlac));
+            sampletype |= (int)SampleType::TypeFlac;
             break;
         case SampleCompression::Raw :
             sampletype &= ~((int)(SampleType::TypeVorbis + SampleType::TypeFlac));
@@ -240,6 +244,9 @@ bool SoundFont::read()
                 readSection(fourcc, len3);
             }
         }
+#if FIX_INVALID_SAMPLETYPE
+        fixSampleType();
+#endif
         // load sample data
         for (int i = 0; i < _samples.size(); i++)
             readSampleData(_samples[i]);
@@ -1666,6 +1673,47 @@ int SoundFont::writeSampleDataFlac (Sample* s, int quality)
     return numBytes;
 }
 
+
+
+#if FIX_INVALID_SAMPLETYPE
+//---------------------------------------------------------
+//   fixSampleType
+//---------------------------------------------------------
+
+void SoundFont::fixSampleType()
+{
+    int flag = 0xf;
+    for (int i = 0; i < _samples.size(); i++) {
+        flag &= _samples[i]->sampletype;
+    }
+    switch (flag) {
+        case 1:
+            if (_fileFormatIn != SF2Format)
+            {
+                for (int i = 0; i < _samples.size(); i++) {
+                    if (_samples[i]->sampletype != 1) {
+                        _samples[i]->sampletype &= ~1;
+                    }
+                    _samples[i]->sampletype |= SampleType::TypeVorbis;
+                }
+            }
+            break;
+        case 2:
+        case 3:
+        {
+            for (int i = 0; i < _samples.size(); i++) {
+                if (_samples[i]->sampletype != 2) {
+                    _samples[i]->sampletype &= ~2;
+                }
+                _samples[i]->sampletype |= SampleType::TypeFlac;
+            }
+        }
+            break;
+        default:
+            break;
+    }
+}
+#endif
 
 
 #if 0
